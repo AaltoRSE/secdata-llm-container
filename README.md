@@ -17,3 +17,15 @@ A singularity container will be built and saved as `sec_llm.sif` (this is the fi
 ```
 sbatch tests.sh
 ```
+
+## Start a jupyter lab session
+```
+# start a shell in the container
+singularity shell sec_llm.sif
+
+# activate the conda environment
+source activate sec-llm-env
+
+# start jupyter lab
+jupyter lab 
+```
