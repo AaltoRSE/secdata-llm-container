@@ -8,8 +8,9 @@
 SIF=sec_llm.sif
 
 echo "Testing basic environment................"
+# bind the huggingface cache to the container
 singularity run --nv --net --network none \
---bind /scratch/shareddata/dldata/huggingface-hub-cache:/models/huggingface-hub \
+--bind /scratch/shareddata/dldata/huggingface-hub-cache:/models/huggingface-hub \ 
 $SIF \
 basic_env.py
 

@@ -11,6 +11,8 @@
 ```
 sbatch build.sh
 ```
+A singularity container will be built and saved as `sec_llm.sif` (this is the file you need to copy to secdata, around 15GB)
+
 ## Tests
 ```
 sbatch tests.sh
