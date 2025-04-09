@@ -10,4 +10,4 @@ if [ ! -f env.yml ]; then
   exit 1
 fi
 
-apptainer build --bind /scratch/rse/secdata-llm-container/env.yml:/tmp/env.yml sec_llm.sif sec_llm.def
+apptainer build --bind ./env.yml:/tmp/env.yml sec_llm.sif sec_llm.def
