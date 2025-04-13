@@ -5,7 +5,7 @@
 - `env.yml` - environment file
 - `build.sh` - build script
 - `tests.sh` - test script
-- `*.py` - python scripts for testing
+- `tests/*.py` - python scripts for testing
 
 ## Build
 ```
