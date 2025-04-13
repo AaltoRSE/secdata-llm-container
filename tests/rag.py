@@ -46,8 +46,8 @@ class State(TypedDict):
     question: str
     context: List[Document]
     answer: str
-
-model_id = "google/gemma-3-27b-it"
+    
+model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(
     model_id,
@@ -62,6 +62,10 @@ pipe = pipeline(
     tokenizer=tokenizer,
     max_new_tokens=512,
     temperature=0.7,
+    top_p=0.9,
+    top_k=50,
+    repetition_penalty=1.1,
+    do_sample=True,
     device_map="auto"
 )
 

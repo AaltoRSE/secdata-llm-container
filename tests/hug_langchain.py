@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, TextStreamer
 import torch
 
-model_id = "google/gemma-3-27b-it"
+model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(model_id,torch_dtype=torch.bfloat16)
 hf = pipeline(

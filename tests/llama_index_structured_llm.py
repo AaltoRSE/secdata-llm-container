@@ -29,7 +29,7 @@ class Invoice(BaseModel):
 pdf_reader = PDFReader()
 documents = pdf_reader.load_data(file=Path("./data_parallel_cpp.pdf"))
 text = documents[0].text
-model_id = "google/gemma-3-27b-it"
+model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
 llm = HuggingFaceLLM(
     model_name=model_id,
     tokenizer_name=model_id,

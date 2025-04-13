@@ -11,8 +11,7 @@ def add(a: float, b: float) -> float:
     """Add two numbers and returns the sum"""
     return a + b
 
-
-model_id = "google/gemma-3-27b-it"
+model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 tokenizer.chat_template = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
 llm = HuggingFaceLLM(

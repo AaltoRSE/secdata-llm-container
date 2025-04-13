@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=build_container
-#SBATCH --time=01:00:00
-#SBATCH --mem=80G
+#SBATCH --time=02:00:00
+#SBATCH --mem=50G
 #SBATCH --cpus-per-task=4
 
 # Ensure env.yml is in the current directory
@@ -10,4 +10,4 @@ if [ ! -f env.yml ]; then
   exit 1
 fi
 
-apptainer build --bind ./env.yml:/tmp/env.yml sec_llm.sif sec_llm.def
+apptainer build --bind $(pwd)/env.yml:/tmp/env.yml sec_llm.sif sec_llm.def

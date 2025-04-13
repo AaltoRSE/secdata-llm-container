@@ -7,7 +7,6 @@ From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 # -------------------------------------------------------------------------
 # Install system packages and Python libraries
-  
 %post
   # Install system packages
   apt-get update && apt-get install -y --no-install-recommends \
@@ -15,8 +14,9 @@ From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
     python3-dev python3-pip \
     curl ca-certificates \
     libssl-dev libffi-dev \
-    vim nano less htop \
+    neovim nano less htop ripgrep \
     libopenblas-dev libopenmpi-dev \
+    openjdk-17-jdk \
     && rm -rf /var/lib/apt/lists/*
 
   # Install Miniforge with error checking
@@ -27,32 +27,50 @@ From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
   fi
   bash /tmp/miniforge.sh -b -p /opt/conda
   rm /tmp/miniforge.sh
+
+  # Add conda to PATH and initialize
   export PATH="/opt/conda/bin:$PATH"
+
+  echo "source /opt/conda/etc/profile.d/conda.sh" >> /etc/bash.bashrc
+  echo "conda activate sec-llm-env" >> /etc/bash.bashrc
 
   # Create environment and activate it
   conda env create -f /tmp/env.yml 
-  echo "source /opt/conda/etc/profile.d/conda.sh" >> /etc/bash.bashrc
-  echo "conda activate sec-llm-env" >> /etc/bash.bashrc
-  
-  # Initialize conda for all shell sessions
-  /opt/conda/bin/conda init bash
-  /opt/conda/bin/conda init zsh
 
   # Cleanup
   conda clean -a -y
   apt-get clean
 
+  # Install INCEpTION
+  INCEPTION_VERSION="36.0"
+  INCEPTION_URL="https://github.com/inception-project/inception/releases/download/inception-${INCEPTION_VERSION}/inception-app-webapp-${INCEPTION_VERSION}.jar"
+  mkdir -p /opt/inception
+  if ! curl -L -o /opt/inception/inception.jar $INCEPTION_URL; then
+    echo "Failed to download INCEpTION" >&2
+    exit 1
+  fi
+
+  # Create INCEpTION startup script
+  cat << 'EOF' > /opt/inception/start_inception.sh
+#!/bin/bash
+# For Singularity, use a bind-mounted directory for writable data
+export INCEPTION_HOME=/inception_data
+mkdir -p $INCEPTION_HOME
+java -jar /opt/inception/inception.jar
+EOF
+  chmod +x /opt/inception/start_inception.sh
+
 # -------------------------------------------------------------------------
 # Environment variables set on container start
 %environment
+  export PATH="/opt/conda/bin:/usr/local/bin:$PATH"
+  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  export CUDA_HOME=/usr/local/cuda
   export TRANSFORMERS_OFFLINE=1
   export HF_DATASETS_OFFLINE=1
   export HF_HUB_OFFLINE=1
   export HF_HOME=/models/huggingface-hub
   export PYTHONUNBUFFERED=1
-  export PATH=/opt/conda/bin:/usr/local/bin:$PATH
-  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH  # CUDA libraries
-  export CUDA_HOME=/usr/local/cuda  # CUDA home
   
 # -------------------------------------------------------------------------
 # Run script
