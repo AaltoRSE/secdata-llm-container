@@ -1,9 +1,13 @@
 Bootstrap: docker
 From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
+
 %labels
   Author Yu Tian
   Container for running open-source LLMs with GPU support
+
+%files
+  env.yml /opt/env.yml
 
 # -------------------------------------------------------------------------
 # Install system packages and Python libraries
@@ -35,11 +39,12 @@ From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
   echo "conda activate sec-llm-env" >> /etc/bash.bashrc
 
   # Create environment and activate it
-  conda env create -f /tmp/env.yml 
+  conda env create -f /opt/env.yml 
 
   # Cleanup
   conda clean -a -y
   apt-get clean
+  rm /opt/env.yml
 
   # Install INCEpTION
   INCEPTION_VERSION="36.0"
