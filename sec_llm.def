@@ -8,7 +8,8 @@ From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 %files
   env.yml /opt/env.yml
-
+  nltk_data /opt/nltk_data
+  
 # -------------------------------------------------------------------------
 # Install system packages and Python libraries
 %post
@@ -75,6 +76,7 @@ EOF
   export HF_DATASETS_OFFLINE=1
   export HF_HUB_OFFLINE=1
   export HF_HOME=/models/huggingface-hub
+  export NLTK_DATA=/opt/nltk_data
   export PYTHONUNBUFFERED=1
   
 # -------------------------------------------------------------------------
