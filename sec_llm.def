@@ -1,6 +1,5 @@
 Bootstrap: docker
-From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
-
+From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
 
 %labels
   Author Yu Tian
@@ -48,10 +47,11 @@ From: nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
   rm /opt/env.yml
 
   # Install INCEpTION
-  INCEPTION_VERSION="36.0"
-  INCEPTION_URL="https://github.com/inception-project/inception/releases/download/inception-${INCEPTION_VERSION}/inception-app-webapp-${INCEPTION_VERSION}.jar"
+  INCEPTION_VERSION="39.2"
+  INCEPTION_URL="https://github.com/inception-project/inception/releases/download/inception-${INCEPTION_VERSION}/inception-app-webapp-${INCEPTION_VERSION}-standalone.jar"
+
   mkdir -p /opt/inception
-  if ! curl -L -o /opt/inception/inception.jar $INCEPTION_URL; then
+  if ! curl -fL -H "Accept: application/octet-stream" -o /opt/inception/inception.jar $INCEPTION_URL; then
     echo "Failed to download INCEpTION" >&2
     exit 1
   fi
@@ -69,8 +69,11 @@ EOF
 # -------------------------------------------------------------------------
 # Environment variables set on container start
 %environment
-  export PATH="/opt/conda/bin:/usr/local/bin:$PATH"
-  export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  # Add conda env bin first so its Python/packages take priority
+  export PATH="/opt/conda/envs/sec-llm-env/bin:/opt/conda/bin:/usr/local/bin:$PATH"
+  export CONDA_PREFIX=/opt/conda/envs/sec-llm-env
+  export CONDA_DEFAULT_ENV=sec-llm-env
+  export LD_LIBRARY_PATH=/opt/conda/envs/sec-llm-env/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
   export CUDA_HOME=/usr/local/cuda
   export TRANSFORMERS_OFFLINE=1
   export HF_DATASETS_OFFLINE=1
@@ -82,10 +85,7 @@ EOF
 # -------------------------------------------------------------------------
 # Run script
 %runscript
-  echo "Running: $@"
-  . /opt/conda/etc/profile.d/conda.sh
-  conda activate sec-llm-env
-  exec python3 "$@"
+  exec python "$@"
 
 
 

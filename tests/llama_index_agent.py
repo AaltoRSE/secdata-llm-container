@@ -2,6 +2,7 @@ from llama_index.core.agent.workflow import AgentWorkflow
 from llama_index.llms.huggingface import HuggingFaceLLM
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import torch
+from model_utils import get_local_model_path
 def multiply(a: float, b: float) -> float:
     """Multiply two numbers and returns the product"""
     return a * b
@@ -12,10 +13,11 @@ def add(a: float, b: float) -> float:
     return a + b
 
 model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+model_path = get_local_model_path(model_id)
+tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
 tokenizer.chat_template = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
 llm = HuggingFaceLLM(
-    model_name=model_id,
+    model_name=model_path,
     tokenizer=tokenizer,
     device_map="auto",
     model_kwargs={

@@ -1,17 +1,16 @@
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
-from langchain_huggingface import HuggingFacePipeline
+from langchain_huggingface import HuggingFacePipeline, HuggingFaceEmbeddings
 from transformers import pipeline
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import sys
 from langgraph.graph import StateGraph, START
 from typing import TypedDict, List
 
 from langchain_core.documents import Document
 from typing_extensions import List, TypedDict
+from model_utils import get_local_model_path
 
 
 class State(TypedDict):
@@ -20,7 +19,7 @@ class State(TypedDict):
     answer: str
 
 
-pdf_input = "/scratch/rse/secdata-llm-container/data_parallel_cpp.pdf"
+pdf_input = "/scratch/rse/secdata-llm-container/tests/data_parallel_cpp.pdf"
 
 loader = PyPDFLoader(pdf_input)
 
@@ -28,12 +27,18 @@ data = loader.load()
 text_splitter=RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
 text_chunks=text_splitter.split_documents(data)
 print('num of text chunks', len(text_chunks))
-embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+embedding_model_path = get_local_model_path("sentence-transformers/all-MiniLM-L6-v2")
+embeddings = HuggingFaceEmbeddings(
+    model_name=embedding_model_path,
+    model_kwargs={"local_files_only": True}
+)
 vector_store=FAISS.from_documents(text_chunks, embeddings)
 
-model_name = "Qwen/Qwen2.5-3B-Instruct"  # or any other Hugging Face model
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+model_id = "meta-llama/Llama-3.1-8B-Instruct"
+model_path = get_local_model_path(model_id)
+print("----------found model path", model_path)
+tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+model = AutoModelForCausalLM.from_pretrained(model_path, local_files_only=True)
 # Create pipeline
 pipe = pipeline(
     "text-generation",
@@ -54,7 +59,7 @@ Context:{context}
 Question:{question}
 
 Only return the helpful answer below and nothing else
-Helpful answern
+Helpful answer:
 """
 qa_prompt=PromptTemplate(template=template, input_variables=['context', 'question'])
 
@@ -81,4 +86,3 @@ query = 'tell me about llama cpp'
 # Execute the graph
 result = graph.invoke({"question": query})
 print(f"Answer: {result['answer']}")
-        

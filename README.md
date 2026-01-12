@@ -11,7 +11,7 @@
 ```
 sbatch build.sh
 ```
-A singularity container will be built and saved as `sec_llm.sif` (this is the file you need to copy to secdata, around 15GB)
+A singularity container will be built and saved as `sec_llm.sif` (this is the file you need to copy to secdata, around 20GB)
 
 ## Tests
 ```
@@ -22,9 +22,6 @@ sbatch tests.sh
 ```
 # start a shell in the container
 singularity shell sec_llm.sif
-
-# activate the conda environment
-source activate sec-llm-env
 
 # start jupyter lab
 jupyter lab 

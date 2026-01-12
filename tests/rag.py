@@ -14,10 +14,15 @@ from langchain_community.llms import HuggingFacePipeline
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 import torch
 from langchain.prompts import PromptTemplate
+from model_utils import get_local_model_path
 
 dotenv.load_dotenv()
 
-embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+embedding_model_path = get_local_model_path("sentence-transformers/all-MiniLM-L6-v2")
+embeddings = SentenceTransformerEmbeddings(
+    model_name=embedding_model_path,
+    model_kwargs={"local_files_only": True}
+)
 vector_store = InMemoryVectorStore(embeddings)
 
 # Use local documents instead of web loading
@@ -32,7 +37,7 @@ all_splits = text_splitter.split_documents(local_docs)
 # Index chunks
 _ = vector_store.add_documents(documents=all_splits)
 
-# Remove hub.pull (which requires internet) and define prompt locally
+# Define prompt locally (avoids hub.pull which requires internet)
 prompt_template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
 {context}
@@ -48,11 +53,13 @@ class State(TypedDict):
     answer: str
     
 model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+model_path = get_local_model_path(model_id)
+tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
 model = AutoModelForCausalLM.from_pretrained(
-    model_id,
+    model_path,
     torch_dtype=torch.float16,
-    device_map="auto"
+    device_map="auto",
+    local_files_only=True
 )
 
 # Create pipeline
@@ -80,7 +87,7 @@ def retrieve(state: State):
 
 def generate(state: State):
     docs_content = "\n\n".join(doc.page_content for doc in state["context"])
-    # Format the input according to Gemma's chat template
+    # Format the input according to Qwen's chat template
     messages = [
         {"role": "user", "content": prompt.invoke({"question": state["question"], "context": docs_content}).text}
     ]

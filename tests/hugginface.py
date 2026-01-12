@@ -1,8 +1,10 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 from transformers import BitsAndBytesConfig
 import torch
+from model_utils import get_local_model_path
 
 model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
+model_path = get_local_model_path(model_id)
 
 # ====== LOAD MODEL DIRECTLY ======
 
@@ -10,12 +12,13 @@ print("=" * 20)
 print("Loading model directly")
 
 model = AutoModelForCausalLM.from_pretrained(
-    model_id,
+    model_path,
     torch_dtype=torch.bfloat16,
     load_in_8bit=True,
-    device_map="auto"
+    device_map="auto",
+    local_files_only=True
 )
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
 
 # Prepare input
 prompt = "How many stars in the space?"
@@ -54,7 +57,7 @@ quantization_config = BitsAndBytesConfig(
 # Setup pipeline
 pipe = pipeline(
     "text-generation",
-    model=model_id,
+    model=model_path,
     device_map="auto",
     max_new_tokens=512,
     model_kwargs={

@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from vllm import LLM, SamplingParams
 from vllm.sampling_params import GuidedDecodingParams
+from model_utils import get_local_model_path
 
 # Guided decoding by Choice (list of possible options)
 guided_decoding_params_choice = GuidedDecodingParams(
@@ -80,18 +81,13 @@ def generate_output(prompt: str, sampling_params: SamplingParams, llm: LLM):
 
 def generate_batch_output(prompts: list, sampling_params: list, llm: LLM):
     """Generate outputs for a batch of prompts with their respective sampling parameters."""
-    # Create a list to store the outputs
-    outputs = []
-    
-    # Call generate with the prompts and sampling_params lists
     batch_outputs = llm.generate(prompts=prompts, sampling_params=sampling_params)
-    
-    # Return the list of generated outputs
     return [output.outputs[0].text for output in batch_outputs]
 
 
 def main():
-    llm = LLM(model="Qwen/Qwen2.5-3B-Instruct", max_model_len=100)
+    model_path = get_local_model_path("Qwen/Qwen2.5-3B-Instruct")
+    llm = LLM(model=model_path, max_model_len=100)
 
     # Single inference examples
     choice_output = generate_output(prompt_choice, sampling_params_choice, llm)
@@ -112,7 +108,6 @@ def main():
     print("BATCHED INFERENCE EXAMPLE")
     print("=" * 50)
     
-    # Prepare lists of prompts and their corresponding sampling parameters
     batch_prompts = [
         prompt_choice,
         prompt_regex,
@@ -123,15 +118,11 @@ def main():
         sampling_params_regex,
     ]
     
-    # Generate outputs in a batch
     batch_results = generate_batch_output(batch_prompts, batch_sampling_params, llm)
     
-    # Format and display batch results
     titles = [
         "Guided decoding by Choice (Batch)",
         "Guided decoding by Regex (Batch)",
-        "Guided decoding by JSON (Batch)",
-        "Guided decoding by Grammar (Batch)"
     ]
     
     for title, result in zip(titles, batch_results):

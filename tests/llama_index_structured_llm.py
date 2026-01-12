@@ -8,6 +8,7 @@ import math
 from datetime import datetime
 from pydantic import BaseModel, Field
 import json
+from model_utils import get_local_model_path
 
 class LineItem(BaseModel):
     """A line item in an invoice."""
@@ -27,16 +28,18 @@ class Invoice(BaseModel):
         description="A list of all the items in this invoice"
     )
 pdf_reader = PDFReader()
-documents = pdf_reader.load_data(file=Path("./data_parallel_cpp.pdf"))
+documents = pdf_reader.load_data(file=Path("./tests/data_parallel_cpp.pdf"))
 text = documents[0].text
 model_id = "Qwen/Qwen2.5-14B-Instruct-1M"
+model_path = get_local_model_path(model_id)
 llm = HuggingFaceLLM(
-    model_name=model_id,
-    tokenizer_name=model_id,
+    model_name=model_path,
+    tokenizer_name=model_path,
     device_map="auto",
     model_kwargs={
         "torch_dtype": torch.bfloat16,
-        "low_cpu_mem_usage": True
+        "low_cpu_mem_usage": True,
+        "local_files_only": True
     },
     max_new_tokens=512,
     generate_kwargs={
