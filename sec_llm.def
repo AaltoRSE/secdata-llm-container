@@ -20,7 +20,6 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
     libssl-dev libffi-dev \
     neovim nano less htop ripgrep \
     libopenblas-dev libopenmpi-dev \
-    openjdk-17-jdk \
     && rm -rf /var/lib/apt/lists/*
 
   # Install Miniforge with error checking
@@ -46,25 +45,16 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
   apt-get clean
   rm /opt/env.yml
 
-  # Install INCEpTION
-  INCEPTION_VERSION="39.2"
-  INCEPTION_URL="https://github.com/inception-project/inception/releases/download/inception-${INCEPTION_VERSION}/inception-app-webapp-${INCEPTION_VERSION}-standalone.jar"
-
-  mkdir -p /opt/inception
-  if ! curl -fL -H "Accept: application/octet-stream" -o /opt/inception/inception.jar $INCEPTION_URL; then
-    echo "Failed to download INCEpTION" >&2
-    exit 1
-  fi
-
-  # Create INCEpTION startup script
-  cat << 'EOF' > /opt/inception/start_inception.sh
+  # Create Label Studio startup script
+  mkdir -p /opt/label-studio
+  cat << 'EOF' > /opt/label-studio/start_label_studio.sh
 #!/bin/bash
 # For Singularity, use a bind-mounted directory for writable data
-export INCEPTION_HOME=/inception_data
-mkdir -p $INCEPTION_HOME
-java -jar /opt/inception/inception.jar
+export LABEL_STUDIO_BASE_DATA_DIR=${LABEL_STUDIO_BASE_DATA_DIR:-/label_studio_data}
+mkdir -p $LABEL_STUDIO_BASE_DATA_DIR
+label-studio start --data-dir $LABEL_STUDIO_BASE_DATA_DIR --no-browser
 EOF
-  chmod +x /opt/inception/start_inception.sh
+  chmod +x /opt/label-studio/start_label_studio.sh
 
 # -------------------------------------------------------------------------
 # Environment variables set on container start
