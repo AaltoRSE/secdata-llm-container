@@ -8,10 +8,19 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
 %files
   env.yml /opt/env.yml
   nltk_data /opt/nltk_data
-  
+  container-scripts/start_ollama.sh /opt/dev/start_ollama.sh
+  container-scripts/start_jupyter_lab.sh /opt/dev/start_jupyter_lab.sh
+  container-scripts/start_code_server.sh /opt/dev/start_code_server.sh
+  container-scripts/continue-config.yaml /opt/dev/continue-config.yaml
+
 # -------------------------------------------------------------------------
 # Install system packages and Python libraries
 %post
+  # Pinned third-party versions (bump when rebuilding with network; VDI runtime is offline).
+  CODE_SERVER_VER=4.112.0
+  CONTINUE_VSIX_URL="https://open-vsx.org/api/Continue/continue/linux-x64/1.3.33/file/Continue.continue-1.3.33@linux-x64.vsix"
+  OLLAMA_VER=0.18.2
+
   # Install system packages
   apt-get update && apt-get install -y --no-install-recommends \
     build-essential git \
@@ -20,6 +29,7 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
     libssl-dev libffi-dev \
     neovim nano less htop ripgrep \
     libopenblas-dev libopenmpi-dev \
+    zstd \
     && rm -rf /var/lib/apt/lists/*
 
   # Install Miniforge with error checking
@@ -31,16 +41,12 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
   bash /tmp/miniforge.sh -b -p /opt/conda
   rm /tmp/miniforge.sh
 
-  # Add conda to PATH and initialize
   export PATH="/opt/conda/bin:$PATH"
-
   echo "source /opt/conda/etc/profile.d/conda.sh" >> /etc/bash.bashrc
   echo "conda activate sec-llm-env" >> /etc/bash.bashrc
 
-  # Create environment and activate it
-  conda env create -f /opt/env.yml 
+  conda env create -f /opt/env.yml
 
-  # Cleanup
   conda clean -a -y
   apt-get clean
   rm /opt/env.yml
@@ -56,6 +62,30 @@ label-studio start --data-dir $LABEL_STUDIO_BASE_DATA_DIR --no-browser
 EOF
   chmod +x /opt/label-studio/start_label_studio.sh
 
+  # code-server (VS Code in browser); extensions baked in for offline VDI use
+  curl -fL -o /tmp/code-server.tgz \
+    "https://github.com/coder/code-server/releases/download/v${CODE_SERVER_VER}/code-server-${CODE_SERVER_VER}-linux-amd64.tar.gz"
+  tar -C /opt -xzf /tmp/code-server.tgz
+  rm /tmp/code-server.tgz
+  mv "/opt/code-server-${CODE_SERVER_VER}-linux-amd64" /opt/code-server
+  mkdir -p /opt/code-server/extensions
+  curl -fL -o /tmp/continue.vsix "${CONTINUE_VSIX_URL}"
+  /opt/code-server/bin/code-server \
+    --extensions-dir /opt/code-server/extensions \
+    --install-extension /tmp/continue.vsix
+  rm /tmp/continue.vsix
+  ln -sf /opt/code-server/bin/code-server /usr/local/bin/code-server
+
+  # Ollama (local LLM runtime for Continue and CLI)
+  curl -fL -o /tmp/ollama-linux-amd64.tar.zst \
+    "https://github.com/ollama/ollama/releases/download/v${OLLAMA_VER}/ollama-linux-amd64.tar.zst"
+  mkdir -p /opt/ollama
+  zstd -dc /tmp/ollama-linux-amd64.tar.zst | tar -x -C /opt/ollama
+  rm /tmp/ollama-linux-amd64.tar.zst
+  ln -sf /opt/ollama/bin/ollama /usr/local/bin/ollama
+
+  chmod +x /opt/dev/start_ollama.sh /opt/dev/start_jupyter_lab.sh /opt/dev/start_code_server.sh
+
 # -------------------------------------------------------------------------
 # Environment variables set on container start
 %environment
@@ -63,7 +93,9 @@ EOF
   export PATH="/opt/conda/envs/sec-llm-env/bin:/opt/conda/bin:/usr/local/bin:$PATH"
   export CONDA_PREFIX=/opt/conda/envs/sec-llm-env
   export CONDA_DEFAULT_ENV=sec-llm-env
-  export LD_LIBRARY_PATH=/opt/conda/envs/sec-llm-env/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=/opt/conda/envs/sec-llm-env/lib:/opt/ollama/lib/ollama:/opt/ollama/lib/ollama/cuda_v12:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  export OLLAMA_HOST=127.0.0.1:11434
+  export OLLAMA_MODELS=/ollama_models
   export CUDA_HOME=/usr/local/cuda
   export TRANSFORMERS_OFFLINE=1
   export HF_DATASETS_OFFLINE=1

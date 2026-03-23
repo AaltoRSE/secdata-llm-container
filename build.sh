@@ -9,5 +9,4 @@ if [ ! -f env.yml ]; then
   echo "Error: env.yml not found in current directory"
   exit 1
 fi
-
 apptainer build sec_llm.sif sec_llm.def
