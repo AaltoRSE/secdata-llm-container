@@ -4,6 +4,10 @@
 - `sec_llm.def` - container definition file
 - `env.yml` - environment file
 - `build.sh` - build script
+- `container-scripts/` - runtime helper scripts copied into the image
+- `container-scripts/start_all.sh` - start common services (convenience wrapper)
+- `container-scripts/start_ollama.sh` - start Ollama server inside the container
+- `container-scripts/start_code_server.sh` - start code-server inside the container
 - `tests.sh` - test script
 - `tests/*.py` - python scripts for testing
 
@@ -61,24 +65,61 @@ These are meant for use on a **VDI desktop** (secdata, e.g.) with **no internet*
 | JupyterLab     | `/opt/dev/start_jupyter_lab.sh`| `http://127.0.0.1:8888`  |
 | code-server    | `/opt/dev/start_code_server.sh`| `http://127.0.0.1:9090`  |
 
-**Persist Ollama models** (recommended): create a directory on the host and bind-mount it to `/ollama_models` so weights are not lost when the container exits.
+**Persist Ollama models** (recommended): create a directory on the host and bind-mount it to `/ollama_models` so weights are not lost when the container exits. Set `OLLAMA_HOST_DIR` to that path—replace the placeholder below.
 
 ```bash
-mkdir -p "$HOME/ollama_models"
-singularity shell --bind "$HOME/ollama_models:/ollama_models" sec_llm.sif
+OLLAMA_HOST_DIR="/path/to/ollama_models"
+mkdir -p "$OLLAMA_HOST_DIR"
+singularity shell --bind "$OLLAMA_HOST_DIR:/ollama_models" sec_llm.sif
 ```
 
-Inside the container, start the services you need. Most users run **either** JupyterLab **or** VSCode/code-server. Ollama + Continue are optional and mainly for the VSCode/code-server workflow:
+Inside the container, start the services you need. Most users run **either** JupyterLab **or** code-server (VS Code in the browser).
+
+**Ollama is optional for code-server**: you can use code-server by itself for editing/running code. Only start Ollama if you want a **local LLM API** (e.g., for the Continue extension).
+
+If you do want LLM features, **Ollama and code-server can run at the same time** in one container—same ports as in the table above (`11434` and `9090`).
 
 ```bash
-# Choose one primary interface:
+# Primary UI (pick one):
 /opt/dev/start_jupyter_lab.sh
-/opt/dev/start_code_server.sh 
-# Optional (for local LLM serving and Continue in code-server):
+/opt/dev/start_code_server.sh
+# Optional (local LLM API for Continue; see below for how to run alongside code-server):
 /opt/dev/start_ollama.sh
 ```
 
-You may also need to bind-mount additional host directories (for example, datasets, project repos, model files, or caches) depending on your workflow.
+**Ollama + code-server together**
+
+Use **two shells in the same Apptainer instance**: start an **instance** once on the host, open two terminals, and `shell` into the **same** instance name in each—then run `/opt/dev/start_ollama.sh` in one terminal and `/opt/dev/start_code_server.sh` in the other. Plain `singularity shell sec_llm.sif` / `apptainer shell sec_llm.sif` in two windows is usually **two separate container runs**; instance mode is what ties both terminals to one container.
+
+On the host (adjust image path, `OLLAMA_HOST_DIR`, and `--bind` to match your setup; `singularity` and `apptainer` are equivalent on many systems):
+
+```bash
+OLLAMA_HOST_DIR="/path/to/ollama_models"
+mkdir -p "$OLLAMA_HOST_DIR"
+apptainer instance start --bind "$OLLAMA_HOST_DIR:/ollama_models" sec_llm.sif llm-dev
+```
+
+Terminal A:
+
+```bash
+apptainer shell instance://llm-dev
+/opt/dev/start_ollama.sh
+```
+
+Terminal B:
+
+```bash
+apptainer shell instance://llm-dev
+/opt/dev/start_code_server.sh
+```
+
+When finished, from the host:
+
+```bash
+apptainer instance stop llm-dev
+```
+
+You may also need to bind-mount additional host directories (for example, datasets, project repos, model files, or caches) depending on your workflow. Use the same binds on `instance start` that you would use for a normal `shell`/`exec`.
 
 Environment overrides: `JUPYTER_PORT`, `CODE_SERVER_PORT`, `CODE_SERVER_AUTH` (`none` or `password`; with `password`, set `PASSWORD`), `OLLAMA_HOST`, `OLLAMA_MODELS`.
 
