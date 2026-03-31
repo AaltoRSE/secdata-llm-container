@@ -1,0 +1,17 @@
+# Seeded into ~/.continue/config.yaml on first code-server start (see start_code_server.sh).
+# You can change the model anytime on the VDI: edit ~/.continue/config.yaml or use Continue's
+# settings UI. Match `model` to a name from `ollama list` (e.g. llama3.2, qwen2.5:7b).
+# Ollama must be running: /opt/dev/start_ollama.sh
+
+# Continue may prompt to migrate schema on first open; choose offline / decline cloud if asked.
+name: Offline (Ollama)
+version: 1.0.0
+schema: v1
+
+allowAnonymousTelemetry: false
+
+models:
+  - name: Ollama (local)
+    provider: ollama
+    model: mymodel
+    apiBase: http://127.0.0.1:11434
