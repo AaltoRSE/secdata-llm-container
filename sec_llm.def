@@ -19,6 +19,16 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
   # Pinned third-party versions (bump when rebuilding with network; VDI runtime is offline).
   CODE_SERVER_VER=4.112.0
   CONTINUE_VSIX_URL="https://open-vsx.org/api/Continue/continue/linux-x64/1.3.33/file/Continue.continue-1.3.33@linux-x64.vsix"
+  # VS Code extensions (VSIX) pinned + downloaded at build time for offline VDI runtime.
+  PYTHON_VSIX_URL="https://open-vsx.org/api/ms-python/python/2026.4.0/file/ms-python.python-2026.4.0.vsix"
+  JUPYTER_VSIX_URL="https://open-vsx.org/api/ms-toolsai/jupyter/2025.9.1/file/ms-toolsai.jupyter-2025.9.1.vsix"
+  # Helpers / bundles used by Python + Jupyter extensions.
+  DEBUGPY_VSIX_URL="https://open-vsx.org/api/ms-python/debugpy/linux-x64/2025.18.0/file/ms-python.debugpy-2025.18.0@linux-x64.vsix"
+  PYTHON_ENVS_VSIX_URL="https://open-vsx.org/api/ms-python/vscode-python-envs/1.24.0/file/ms-python.vscode-python-envs-1.24.0.vsix"
+  JUPYTER_KEYMAP_VSIX_URL="https://open-vsx.org/api/ms-toolsai/jupyter-keymap/1.1.2/file/ms-toolsai.jupyter-keymap-1.1.2.vsix"
+  JUPYTER_RENDERERS_VSIX_URL="https://open-vsx.org/api/ms-toolsai/jupyter-renderers/1.3.0/file/ms-toolsai.jupyter-renderers-1.3.0.vsix"
+  JUPYTER_SLIDESHOW_VSIX_URL="https://open-vsx.org/api/ms-toolsai/vscode-jupyter-slideshow/0.1.6/file/ms-toolsai.vscode-jupyter-slideshow-0.1.6.vsix"
+  JUPYTER_CELL_TAGS_VSIX_URL="https://open-vsx.org/api/ms-toolsai/vscode-jupyter-cell-tags/0.1.9/file/ms-toolsai.vscode-jupyter-cell-tags-0.1.9.vsix"
   OLLAMA_VER=0.18.2
 
   # Install system packages
@@ -69,11 +79,29 @@ EOF
   rm /tmp/code-server.tgz
   mv "/opt/code-server-${CODE_SERVER_VER}-linux-amd64" /opt/code-server
   mkdir -p /opt/code-server/extensions
+  # Install extensions at build time so runtime can be offline.
   curl -fL -o /tmp/continue.vsix "${CONTINUE_VSIX_URL}"
+  curl -fL -o /tmp/python.vsix "${PYTHON_VSIX_URL}"
+  curl -fL -o /tmp/jupyter.vsix "${JUPYTER_VSIX_URL}"
+  curl -fL -o /tmp/debugpy.vsix "${DEBUGPY_VSIX_URL}"
+  curl -fL -o /tmp/python-envs.vsix "${PYTHON_ENVS_VSIX_URL}"
+  curl -fL -o /tmp/jupyter-keymap.vsix "${JUPYTER_KEYMAP_VSIX_URL}"
+  curl -fL -o /tmp/jupyter-renderers.vsix "${JUPYTER_RENDERERS_VSIX_URL}"
+  curl -fL -o /tmp/jupyter-slideshow.vsix "${JUPYTER_SLIDESHOW_VSIX_URL}"
+  curl -fL -o /tmp/jupyter-cell-tags.vsix "${JUPYTER_CELL_TAGS_VSIX_URL}"
   /opt/code-server/bin/code-server \
     --extensions-dir /opt/code-server/extensions \
-    --install-extension /tmp/continue.vsix
-  rm /tmp/continue.vsix
+    --install-extension /tmp/continue.vsix \
+    --install-extension /tmp/python.vsix \
+    --install-extension /tmp/jupyter.vsix \
+    --install-extension /tmp/debugpy.vsix \
+    --install-extension /tmp/python-envs.vsix \
+    --install-extension /tmp/jupyter-keymap.vsix \
+    --install-extension /tmp/jupyter-renderers.vsix \
+    --install-extension /tmp/jupyter-slideshow.vsix \
+    --install-extension /tmp/jupyter-cell-tags.vsix
+  rm -f /tmp/continue.vsix /tmp/python.vsix /tmp/jupyter.vsix /tmp/debugpy.vsix /tmp/python-envs.vsix \
+    /tmp/jupyter-keymap.vsix /tmp/jupyter-renderers.vsix /tmp/jupyter-slideshow.vsix /tmp/jupyter-cell-tags.vsix
   ln -sf /opt/code-server/bin/code-server /usr/local/bin/code-server
 
   # Ollama (local LLM runtime for Continue and CLI)
