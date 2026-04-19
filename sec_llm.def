@@ -4,9 +4,12 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
 %labels
   Author Yu Tian
   Container for running open-source LLMs with GPU support
+  CondaEnvDefault sec-llm-env
+  CondaEnvAlt sec-llm-env2
 
 %files
   env.yml /opt/env.yml
+  env2.yml /opt/env2.yml
   nltk_data /opt/nltk_data
   container-scripts/start_ollama.sh /opt/dev/start_ollama.sh
   container-scripts/start_jupyter_lab.sh /opt/dev/start_jupyter_lab.sh
@@ -55,11 +58,21 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
   echo "source /opt/conda/etc/profile.d/conda.sh" >> /etc/bash.bashrc
   echo "conda activate sec-llm-env" >> /etc/bash.bashrc
 
+  # Building containers often happens without a visible GPU, but CUDA-enabled PyTorch
+  # packages depend on the `__cuda` virtual package. Override detection so the solver
+  # can resolve GPU PyTorch at build time.
+  export CONDA_OVERRIDE_CUDA=12.4
+
   conda env create -f /opt/env.yml
+
+  # Second isolated env (Python 3.10 + PyTorch CUDA 11.8 stack from env2.yml).
+  export CONDA_OVERRIDE_CUDA=11.8
+  conda env create -f /opt/env2.yml
+  unset CONDA_OVERRIDE_CUDA
 
   conda clean -a -y
   apt-get clean
-  rm /opt/env.yml
+  rm -f /opt/env.yml /opt/env2.yml
 
   # Create Label Studio startup script
   mkdir -p /opt/label-studio
