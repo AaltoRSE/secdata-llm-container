@@ -6,10 +6,12 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
   Container for running open-source LLMs with GPU support
   CondaEnvDefault sec-llm-env
   CondaEnvAlt sec-llm-env2
+  CondaEnvThird sec-llm-env3
 
 %files
   env.yml /opt/env.yml
   env2.yml /opt/env2.yml
+  env3.yml /opt/env3.yml
   nltk_data /opt/nltk_data
   container-scripts/start_ollama.sh /opt/dev/start_ollama.sh
   container-scripts/start_jupyter_lab.sh /opt/dev/start_jupyter_lab.sh
@@ -68,11 +70,15 @@ From: nvidia/cuda:12.9.0-cudnn-devel-ubuntu22.04
   # Second isolated env (Python 3.10 + PyTorch CUDA 11.8 stack from env2.yml).
   export CONDA_OVERRIDE_CUDA=11.8
   conda env create -f /opt/env2.yml
+
+  # Third isolated env (Python 3.11 + PyTorch CUDA 12.4 stack from env3.yml).
+  export CONDA_OVERRIDE_CUDA=12.4
+  conda env create -f /opt/env3.yml
   unset CONDA_OVERRIDE_CUDA
 
   conda clean -a -y
   apt-get clean
-  rm -f /opt/env.yml /opt/env2.yml
+  rm -f /opt/env.yml /opt/env2.yml /opt/env3.yml
 
   # Create Label Studio startup script
   mkdir -p /opt/label-studio

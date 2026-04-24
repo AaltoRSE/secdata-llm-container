@@ -55,6 +55,39 @@ Copy the whole **`ollama_models`** directory to secdata (it can be many GB).
 sbatch tests.sh
 ```
 
+### Conda environments by model
+
+The container includes three prebuilt conda environments:
+
+- `sec-llm-env` (default; auto-activated)
+- `sec-llm-env2`
+- `sec-llm-env3`
+
+Use different environments for different models:
+
+| model ID | Conda env to use |
+|-------------------|------------------|
+| `utter-project/EuroLLM-9B-Instruct` | `sec-llm-env2` |
+| `intfloat/multilingual-e5-large-instruct` | `sec-llm-env` |
+| `TurkuNLP/gpt3-finnish-8B` | `sec-llm-env` |
+| `Helsinki-NLP/opus-mt-fi-en` | `sec-llm-env` |
+| `Helsinki-NLP/opus-mt-en-fi` | `sec-llm-env` |
+| `facebook/nllb-200-3.3B` | `sec-llm-env` |
+| `google/gemma-4-E4B-it` | `sec-llm-env3` |
+
+Example (inside container):
+
+```bash
+# default env for most models
+python tests/teste5.py
+
+# explicit env for EuroLLM
+/opt/conda/envs/sec-llm-env2/bin/python tests/eurollm.py
+
+# explicit env for Gemma
+/opt/conda/envs/sec-llm-env3/bin/python tests/gemma.py
+```
+
 ## Runtime services (JupyterLab, code-server, Ollama)
 
 These are meant for use on a **VDI desktop** (secdata, e.g.) with **no internet**: bind services to `127.0.0.1` and open them in a browser on the same machine.
