@@ -1,0 +1,32 @@
+#!/bin/bash
+# Show worker state and queue contents. Safe to run from the VDI or the GPU node.
+set -uo pipefail
+
+QUEUE="${GPU_QUEUE_ROOT:-/nfs/shared/gpu-queue}"
+PIDFILE="$QUEUE/worker.pid"
+
+count() { ls -1 "$QUEUE/$1"/*.job 2>/dev/null | wc -l | tr -d ' '; }
+
+echo "Queue root: $QUEUE"
+echo
+echo "=== Worker ==="
+if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+  echo "Running (pid $(cat "$PIDFILE"))"
+else
+  echo "NOT running — on the GPU node run: gpu-queue-start"
+fi
+
+echo
+echo "=== Counts ==="
+printf "  pending: %s\n  running: %s\n  done:    %s\n  failed:  %s\n" \
+  "$(count pending)" "$(count running)" "$(count done)" "$(count failed)"
+
+echo
+echo "=== Pending (next first) ==="
+ls -1 "$QUEUE"/pending/*.job 2>/dev/null | sort | sed 's#.*/##; s/\.job$//' | sed 's/^/  /' || true
+[[ -n "$(ls -1 "$QUEUE"/pending/*.job 2>/dev/null)" ]] || echo "  (none)"
+
+echo
+echo "=== Running ==="
+ls -1 "$QUEUE"/running/*.job 2>/dev/null | sed 's#.*/##; s/\.job$//' | sed 's/^/  /' || true
+[[ -n "$(ls -1 "$QUEUE"/running/*.job 2>/dev/null)" ]] || echo "  (none)"

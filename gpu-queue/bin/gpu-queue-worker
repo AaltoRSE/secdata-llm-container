@@ -1,0 +1,75 @@
+#!/bin/bash
+set -euo pipefail
+
+QUEUE="${GPU_QUEUE_ROOT:-/nfs/shared/gpu-queue}"
+LOCK="$QUEUE/.gpu.lock"
+POLL="${GPU_QUEUE_POLL:-10}"
+
+mkdir -p "$QUEUE"/{pending,running,done,failed,logs}
+exec 9>"$LOCK"
+
+run_job() {
+  local jobfile="$1"
+  local id log sif script tlimit
+
+  id=$(basename "$jobfile" .job)
+  log="$QUEUE/logs/$id.log"
+
+  # Claim the job FIRST (before sourcing/validating) so that *any* failure below
+  # leaves the descriptor in running/, where the main loop moves it to failed/.
+  # Otherwise a job that fails before being claimed stays in pending/ and the
+  # worker picks it up again forever (the retry loop this fixes).
+  mv "$jobfile" "$QUEUE/running/$id.job" || return 1
+  jobfile="$QUEUE/running/$id.job"
+
+  # shellcheck disable=SC1090
+  source "$jobfile" || { echo "Bad job descriptor: $jobfile" >> "$log"; return 1; }
+
+  sif="${SIF:-}"
+  script="${JOB_SCRIPT:-}"
+  tlimit="${TIME_LIMIT:-}"
+
+  [[ -n "$sif" ]]    || { echo "Missing SIF in descriptor: $jobfile" >> "$log"; return 1; }
+  [[ -n "$script" ]] || { echo "Missing JOB_SCRIPT in descriptor: $jobfile" >> "$log"; return 1; }
+  [[ -f "$sif" ]]    || { echo "Missing .sif: $sif" >> "$log"; return 1; }
+  [[ -f "$script" ]] || { echo "Missing job script: $script" >> "$log"; return 1; }
+
+  {
+    echo "=== START $id $(date) ==="
+    echo "USER=$USER SIF=$sif JOB=$script"
+  } >> "$log"
+
+  local -a cmd=(singularity exec --nv -B /nfs --no-home "$sif" bash "$script")
+  if [[ -n "$tlimit" ]]; then
+    timeout "$tlimit" "${cmd[@]}"
+  else
+    "${cmd[@]}"
+  fi
+}
+
+while true; do
+  job=$(ls -1 "$QUEUE/pending/"*.job 2>/dev/null | head -1 || true)
+
+  if [[ -z "$job" ]]; then
+    sleep "$POLL"
+    continue
+  fi
+
+  if ! flock -n 9; then
+    sleep 5
+    continue
+  fi
+
+  id=$(basename "$job" .job)
+  log="$QUEUE/logs/$id.log"
+
+  if run_job "$job" >> "$log" 2>&1; then
+    mv "$QUEUE/running/$id.job" "$QUEUE/done/$id.job"
+    echo "=== END $id OK $(date) ===" >> "$log"
+  else
+    [[ -f "$QUEUE/running/$id.job" ]] && mv "$QUEUE/running/$id.job" "$QUEUE/failed/$id.job"
+    echo "=== END $id FAILED $(date) ===" >> "$log"
+  fi
+
+  flock -u 9
+done

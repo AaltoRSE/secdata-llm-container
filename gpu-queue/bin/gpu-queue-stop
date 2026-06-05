@@ -1,0 +1,33 @@
+#!/bin/bash
+# Stop the queue worker on the GPU node. A job currently running is allowed to
+# finish unless you pass --kill-running (which also terminates the active job).
+set -euo pipefail
+
+QUEUE="${GPU_QUEUE_ROOT:-/nfs/shared/gpu-queue}"
+PIDFILE="$QUEUE/worker.pid"
+KILL_RUNNING=0
+
+[[ "${1:-}" == "--kill-running" ]] && KILL_RUNNING=1
+
+if [[ ! -f "$PIDFILE" ]]; then
+  echo "Worker not running (no pid file)"
+  exit 0
+fi
+
+pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
+  echo "Worker not running (stale pid file removed)"
+  rm -f "$PIDFILE"
+  exit 0
+fi
+
+if [[ "$KILL_RUNNING" -eq 1 ]]; then
+  # Kill the worker's whole process group so the running container stops too.
+  kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
+  echo "Worker and any running job signalled to stop (pid $pid)"
+else
+  kill -TERM "$pid" 2>/dev/null || true
+  echo "Worker signalled to stop (pid $pid)"
+  echo "Note: a job already running may continue until it exits."
+fi
+rm -f "$PIDFILE"

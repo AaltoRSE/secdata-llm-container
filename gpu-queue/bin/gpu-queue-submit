@@ -1,0 +1,69 @@
+#!/bin/bash
+# Submit a job to the shared single-GPU queue (run from the VDI or GPU node).
+# Job state lives on NFS under $GPU_QUEUE_ROOT; the worker on the GPU node runs
+# one job at a time. Each job carries its own .sif so users can use different images.
+set -euo pipefail
+
+QUEUE="${GPU_QUEUE_ROOT:-/nfs/shared/gpu-queue}"
+JOB_SCRIPT=""
+SIF=""
+NAME=""
+TIME_LIMIT=""   # optional: seconds (3600) or 2h / 30m for `timeout`
+
+usage() {
+  cat <<'USAGE'
+Usage: gpu-queue-submit --sif PATH --job SCRIPT [--name NAME] [--time LIMIT]
+
+  --sif PATH    Apptainer/Singularity image for this job (required)
+  --job SCRIPT  Bash script to run inside the container (required)
+  --name NAME   Short label used in the job id and logs (default: script basename)
+  --time LIMIT  Optional wall-clock limit passed to `timeout` (e.g. 3600, 2h, 30m)
+
+The job script runs inside the container via:
+  singularity exec --nv -B /nfs --no-home <sif> bash <script>
+USAGE
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --sif)  SIF="${2:-}"; shift 2 ;;
+    --job)  JOB_SCRIPT="${2:-}"; shift 2 ;;
+    --name) NAME="${2:-}"; shift 2 ;;
+    --time) TIME_LIMIT="${2:-}"; shift 2 ;;
+    -h|--help) usage ;;
+    *) echo "Unknown option: $1" >&2; usage ;;
+  esac
+done
+
+[[ -n "$SIF" && -n "$JOB_SCRIPT" ]] || usage
+[[ -f "$SIF" ]] || { echo "Error: .sif not found: $SIF" >&2; exit 1; }
+[[ -f "$JOB_SCRIPT" ]] || { echo "Error: job script not found: $JOB_SCRIPT" >&2; exit 1; }
+
+# Resolve to absolute paths so the worker on the GPU node can find them.
+SIF="$(readlink -f "$SIF")"
+JOB_SCRIPT="$(readlink -f "$JOB_SCRIPT")"
+
+mkdir -p "$QUEUE/pending"
+
+NAME="${NAME:-$(basename "$JOB_SCRIPT")}"
+# Sanitize the name so it stays a single safe path component.
+NAME="$(printf '%s' "$NAME" | tr -cs 'A-Za-z0-9._-' '-')"
+ID="$(date +%Y%m%d-%H%M%S)-${USER}-${NAME}"
+
+# Write atomically: create in a temp file, then mv into pending/.
+TMP="$QUEUE/pending/.$ID.job.tmp"
+cat > "$TMP" <<EOF
+USER=$USER
+SIF=$SIF
+JOB_SCRIPT=$JOB_SCRIPT
+TIME_LIMIT=$TIME_LIMIT
+SUBMITTED=$(date -Iseconds)
+EOF
+mv "$TMP" "$QUEUE/pending/$ID.job"
+
+echo "Submitted: $ID"
+echo "  sif:  $SIF"
+echo "  job:  $JOB_SCRIPT"
+echo "  log:  $QUEUE/logs/$ID.log"
+echo "Check status with: gpu-queue-status"

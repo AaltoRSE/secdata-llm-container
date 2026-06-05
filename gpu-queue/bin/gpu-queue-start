@@ -1,0 +1,36 @@
+#!/bin/bash
+# Start the queue worker on the GPU node so it survives SSH logout (no tmux needed).
+# Uses setsid + nohup and records a PID file. Idempotent: refuses to start twice.
+set -euo pipefail
+
+QUEUE="${GPU_QUEUE_ROOT:-/nfs/shared/gpu-queue}"
+PIDFILE="$QUEUE/worker.pid"
+LOG="$QUEUE/logs/worker.log"
+WORKER="$(dirname "$(readlink -f "$0")")/gpu-queue-worker"
+
+mkdir -p "$QUEUE/logs"
+
+if [[ -f "$PIDFILE" ]]; then
+  pid="$(cat "$PIDFILE" 2>/dev/null || true)"
+  if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+    echo "Worker already running (pid $pid)"
+    exit 0
+  fi
+  echo "Removing stale pid file (pid ${pid:-?} not running)"
+  rm -f "$PIDFILE"
+fi
+
+# setsid detaches into a new session so it keeps running after logout.
+setsid nohup "$WORKER" >> "$LOG" 2>&1 &
+echo $! > "$PIDFILE"
+sleep 1
+
+pid="$(cat "$PIDFILE")"
+if kill -0 "$pid" 2>/dev/null; then
+  echo "Worker started (pid $pid)"
+  echo "Log: $LOG"
+else
+  echo "Worker failed to start; check $LOG" >&2
+  rm -f "$PIDFILE"
+  exit 1
+fi
