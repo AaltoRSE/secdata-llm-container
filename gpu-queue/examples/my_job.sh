@@ -22,6 +22,6 @@ PY
 
 # --- your real work (example: run a Python script) ---
 # conda env is already active in sec_llm.sif (sec-llm-env)
-python /nfs/home/${USER}/my_train.py
+python /nfs/home/${USER}/my_script.py
 
 echo "Job finished: $(date)"
