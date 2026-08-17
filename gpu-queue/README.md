@@ -71,6 +71,7 @@ $GPU_QUEUE_ROOT/
 │   └── <job-id>.log  # per-job output
 ├── bin/              # installed scripts (see setup)
 ├── worker.pid        # pid written by gpu-queue-start
+├── worker.meta       # user/host/start time (for status from another host)
 └── .gpu.lock         # flock file (created when worker runs)
 ```
 
@@ -84,8 +85,9 @@ bash /nfs/data/gpu-queue/gpu-queue-start
 bash /nfs/data/gpu/queue/gpu-queue-status        
 ```
 
-`gpu-queue-start` is idempotent: if `worker.pid` points to a live process, it exits
-without starting a second worker. Stale pid files are removed automatically.
+`gpu-queue-start` is idempotent: if `worker.pid` points to a live process **on this
+host** (including one started by another user), it exits without starting a second
+worker. Stale pid files are removed automatically.
 
 After a GPU-node reboot, someone runs `gpu-queue-start` again. 
 
@@ -184,9 +186,22 @@ gpu-queue-start
 gpu-queue-status
 ```
 
+### `gpu-queue-status` shows another user's worker
+
+Status is meant to work for every user. It reports `Running (pid …, user …)` when
+the worker is alive on **this** host, even if someone else started it. `kill -0`
+cannot see other users' processes, so liveness is checked via `/proc` (and EPERM).
+
+If you run status from the VDI, the GPU-node pid is not visible here. You should
+see `Pid file present … worker was started on <gpu-host>` rather than `NOT running`.
+SSH to the GPU node to confirm.
+
+`gpu-queue-stop` still only works for the user who started the worker (or root).
+
 ### `gpu-queue-status` says NOT running but `worker.pid` exists
 
-Stale pid file (worker crashed without cleanup). Safe to remove and restart:
+On the GPU node this is a stale pid file (worker crashed without cleanup). Safe to
+remove and restart:
 
 ```bash
 rm "/nfs/data/gpu-queue/worker.pid"
@@ -220,6 +235,10 @@ Open the descriptor and the log. Common causes:
 | `Missing SIF` / `Missing JOB_SCRIPT` | Edit the `.job` file or resubmit |
 | `Missing .sif` / `Missing job script` | Path wrong or file deleted; fix path and resubmit |
 | `timeout: ...` | Job exceeded `--time`; resubmit with a longer limit or no limit |
+
+### Job stuck in `pending/`, `running/` empty
+
+Worker is alive but never claims: usually a stuck NFS `flock` on `.gpu.lock` (`sleep 5` in `pstree`). See [TROUBLESHOOTING-nfs-flock.md](TROUBLESHOOTING-nfs-flock.md).
 
 ### Queue blocked by a bad pending job
 
